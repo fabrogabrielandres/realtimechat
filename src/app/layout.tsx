@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/components/queryprovider/Providers";
 
 const jetBrains_Mono = JetBrains_Mono({
   subsets: ["latin"],
@@ -20,11 +21,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${jetBrains_Mono.variable} antialiased`}
-      >
-        {children}
-        chau
+      <body className={`${jetBrains_Mono.variable} antialiased`}>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
