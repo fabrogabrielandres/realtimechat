@@ -2,6 +2,7 @@
 
 import { useUsername } from "@/hooks/use-username";
 import { useCreateRoom } from "@/hooks/useCreateRoom";
+import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 const Page = () => {
@@ -15,14 +16,16 @@ const Page = () => {
 export default Page;
 
 function Lobby() {
+
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error');
+
   const { username } = useUsername();
   const { createRoom } = useCreateRoom();
 
   const wasDestroyed = false;
-  let error: "room-not-found" | "room-full" | null = null;
-  error = null;
 
-  const llamar = async () => {
+  const create = async () => {
     const data = await createRoom.mutate();
   };
 
@@ -78,7 +81,7 @@ function Lobby() {
             </div>
 
             <button
-              onClick={llamar}
+              onClick={create}
               className="w-full bg-zinc-100 text-black p-3 text-sm font-bold hover:bg-zinc-50 hover:text-black transition-colors mt-2 cursor-pointer disabled:opacity-50"
             >
               CREATE SECURE ROOM
