@@ -8,7 +8,7 @@ export const proxy = async (req: NextRequest) => {
   const roomMatch = pathname.match(/^\/room\/([^/]+)$/)
   if (!roomMatch) return NextResponse.redirect(new URL("/", req.url))
 
-  console.log("roomMatch", roomMatch);
+  // console.log("roomMatch", roomMatch);
 
   const roomId = roomMatch[1]
 
@@ -21,7 +21,7 @@ export const proxy = async (req: NextRequest) => {
   }
 
   const existingToken = req.cookies.get("x-auth-token")?.value
-  console.log("existingToken ", existingToken);
+  // console.log("existingToken ", existingToken);
 
   if (existingToken && meta.connected.includes(existingToken)) {
     return NextResponse.next()

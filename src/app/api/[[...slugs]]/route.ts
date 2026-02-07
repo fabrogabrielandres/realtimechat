@@ -21,6 +21,7 @@ const rooms = new Elysia({ prefix: "/rooms" })
     })
 
 
+
 const app = new Elysia({ prefix: '/api' }).use(rooms)
 
 export const GET = app.fetch
