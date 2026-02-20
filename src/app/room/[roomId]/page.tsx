@@ -5,25 +5,37 @@ import { useGetMessageDataQuery } from '@/hooks/useGetMessageDataQuery';
 import { useMessageMutation } from '@/hooks/useMessageMutation';
 import { useRealtime } from '@/lib/realtime-client';
 import { useParams, useRouter } from 'next/navigation';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Message } from '@/lib/realtime';
+import { useRoomTTL } from '@/hooks/useRoomTTL';
 
 export default function ComponentName() {
     const params = useParams();
     const roomId = params.roomId as string;
     const router = useRouter();
     const queryClient = useQueryClient();
-    
+
     const { username } = useUsername();
     const [input, setInput] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
-    
+
     const { mutationName } = useMessageMutation();
     const { data: messagesData } = useGetMessageDataQuery({ roomId });
 
     const [copyStatus, setCopyStatus] = useState("COPY");
-    const [timeRemaining, setTimeRemaining] = useState<number | null>(60);
+
+    // Custom hook del tiempo - SOLO ESTO SE AGREGA/MANTIENE
+    const {
+        formattedTime,
+        isExpiring,
+        progress
+    } = useRoomTTL({
+        roomId,
+        onExpire: () => {
+            console.log('Room expired!');
+        }
+    });
 
     const copyLink = () => {
         const url = window.location.href;
@@ -61,11 +73,11 @@ export default function ComponentName() {
                 queryClient.setQueryData(["messages", roomId], (old: any) => {
                     // Filtrar mensajes temporales con el mismo texto
                     const filteredMessages = old?.messages?.filter(
-                        (m: Message) => 
-                            !m.id.startsWith('temp-') || 
+                        (m: Message) =>
+                            !m.id.startsWith('temp-') ||
                             m.text !== data.text
                     ) || [];
-                    
+
                     // Añadir el mensaje real si no existe ya
                     const exists = filteredMessages.some((m: Message) => m.id === data.id);
                     if (!exists) {
@@ -73,7 +85,7 @@ export default function ComponentName() {
                             messages: [...filteredMessages, data]
                         };
                     }
-                    
+
                     return old;
                 });
             }
@@ -109,16 +121,22 @@ export default function ComponentName() {
 
                     <div className="h-8 w-px bg-zinc-800" />
 
+                    {/* SECCIÓN DEL TIEMPO - Solo esto se modifica para usar el hook */}
                     <div className="flex flex-col">
                         <span className="text-xs text-zinc-500 uppercase">Self-Destruct</span>
                         <span
-                            className={`text-sm font-bold flex items-center gap-2 ${
-                                timeRemaining !== null && timeRemaining < 60
-                                    ? "text-red-500"
-                                    : "text-amber-500"
-                            }`}
+                            className={`text-sm font-bold flex items-center gap-2 ${formattedTime !== null && parseInt(formattedTime.split(':')[1]) < 60
+                                ? "text-red-500"
+                                : "text-amber-500"
+                                }`}
                         >
-                            {timeRemaining !== null ? timeRemaining : "--:--"}
+                            {formattedTime !== null ? formattedTime : "--:--"}
+                            {/* Barra de progreso opcional si el hook la provee */}
+                            {progress !== null && (
+                                <span className="text-xs text-zinc-600">
+                                    ({Math.round(progress)}%)
+                                </span>
+                            )}
                         </span>
                     </div>
                 </div>
@@ -142,20 +160,18 @@ export default function ComponentName() {
                 )}
 
                 {messages.map((msg: Message) => (
-                    <div 
-                        key={msg.id} 
-                        className={`flex flex-col items-start ${
-                            msg.id.startsWith('temp-') ? 'opacity-50' : ''
-                        }`}
+                    <div
+                        key={msg.id}
+                        className={`flex flex-col items-start ${msg.id.startsWith('temp-') ? 'opacity-50' : ''
+                            }`}
                     >
                         <div className="max-w-[80%] group">
                             <div className="flex items-baseline gap-3 mb-1">
                                 <span
-                                    className={`text-xs font-bold ${
-                                        msg.sender === username 
-                                            ? "text-green-500" 
-                                            : "text-blue-500"
-                                    }`}
+                                    className={`text-xs font-bold ${msg.sender === username
+                                        ? "text-green-500"
+                                        : "text-blue-500"
+                                        }`}
                                 >
                                     {msg.sender === username ? "YOU" : msg.sender}
                                     {msg.id.startsWith('temp-') && " (sending...)"}

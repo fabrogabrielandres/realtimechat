@@ -22,7 +22,14 @@ const rooms = new Elysia({ prefix: "/rooms" })
 
         return { roomId }
 
-    })
+    }).use(authMiddleware).get(
+        "/ttl",
+        async ({ auth }) => {
+            const ttl = await redis.ttl(`meta:${auth.roomId}`)
+            return { ttl: ttl > 0 ? ttl : 0 }
+        },
+        { query: z.object({ roomId: z.string() }) }
+    )
 
 const messages = new Elysia({ prefix: "/messages" }).use(authMiddleware).post(
     "/",
@@ -48,7 +55,7 @@ const messages = new Elysia({ prefix: "/messages" }).use(authMiddleware).post(
         // add message to history
         await redis.rpush(`messages:${roomId}`, { ...message, token: auth.token })
         console.log("message", message);
-        
+
         await realtime.channel(roomId).emit("chat.message", message)
 
         // housekeeping
