@@ -47,6 +47,8 @@ const messages = new Elysia({ prefix: "/messages" }).use(authMiddleware).post(
 
         // add message to history
         await redis.rpush(`messages:${roomId}`, { ...message, token: auth.token })
+        console.log("message", message);
+        
         await realtime.channel(roomId).emit("chat.message", message)
 
         // housekeeping
