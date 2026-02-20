@@ -8,7 +8,11 @@ export const useGetMessageDataQuery = (query: { roomId: string }) => {
         queryFn: async () => {
             const res = await client.messages.get({ query: { roomId } })
             return res.data
-        }
+        },
+        // Importante: evitar refetch automático
+        staleTime: Infinity,
+        // No refetch en window focus
+        refetchOnWindowFocus: false,
     });
 
     return { status, data, error, refetch, isLoading, isError };

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUsername } from '@/hooks/use-username';
@@ -6,64 +5,99 @@ import { useGetMessageDataQuery } from '@/hooks/useGetMessageDataQuery';
 import { useMessageMutation } from '@/hooks/useMessageMutation';
 import { useRealtime } from '@/lib/realtime-client';
 import { useParams, useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Message } from '@/lib/realtime';
 
 export default function ComponentName() {
     const params = useParams();
     const roomId = params.roomId as string;
-    const router = useRouter()
-    const { mutationName } = useMessageMutation()
+    const router = useRouter();
+    const queryClient = useQueryClient();
+    
+    const { username } = useUsername();
+    const [input, setInput] = useState("");
+    const inputRef = useRef<HTMLInputElement>(null);
+    
+    const { mutationName } = useMessageMutation();
+    const { data: messagesData } = useGetMessageDataQuery({ roomId });
 
-    const { username } = useUsername()
-    const [input, setInput] = useState("")
-    const inputRef = useRef<HTMLInputElement>(null)
-
-    const [copyStatus, setCopyStatus] = useState("COPY")
-    const [timeRemaining, setTimeRemaining] = useState<number | null>(60)
-    const { data: messages, refetch } = useGetMessageDataQuery({ roomId })
-
-
+    const [copyStatus, setCopyStatus] = useState("COPY");
+    const [timeRemaining, setTimeRemaining] = useState<number | null>(60);
 
     const copyLink = () => {
-        const url = window.location.href
-        navigator.clipboard.writeText(url)
-        setCopyStatus("COPIED!")
-        setTimeout(() => setCopyStatus("COPY"), 2000)
-    }
+        const url = window.location.href;
+        navigator.clipboard.writeText(url);
+        setCopyStatus("COPIED!");
+        setTimeout(() => setCopyStatus("COPY"), 2000);
+    };
 
-    const sendMessage = ({ text }: { text: string }) => {
+    const sendMessage = () => {
+        if (!input.trim()) return;
+        
         mutationName.mutate({
             username,
-            text,
+            text: input,
             roomId,
             cleanInput: setInput
-        })
+        });
+    };
 
-    }
+    // Manejador de tecla Enter
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter" && input.trim()) {
+            sendMessage();
+            inputRef.current?.focus();
+        }
+    };
 
+    // Realtime updates
     useRealtime({
         channels: [roomId],
         events: ["chat.message", "chat.destroy"],
-        onData: ({ event }) => {
+        onData: ({ event, data }) => {
             if (event === "chat.message") {
-                refetch()
+                // Actualizar cache de React Query con el mensaje real
+                queryClient.setQueryData(["messages", roomId], (old: any) => {
+                    // Filtrar mensajes temporales con el mismo texto
+                    const filteredMessages = old?.messages?.filter(
+                        (m: Message) => 
+                            !m.id.startsWith('temp-') || 
+                            m.text !== data.text
+                    ) || [];
+                    
+                    // Añadir el mensaje real si no existe ya
+                    const exists = filteredMessages.some((m: Message) => m.id === data.id);
+                    if (!exists) {
+                        return {
+                            messages: [...filteredMessages, data]
+                        };
+                    }
+                    
+                    return old;
+                });
             }
 
             if (event === "chat.destroy") {
-                router.push("/?destroyed=true")
+                router.push("/?destroyed=true");
             }
         },
-    })
+    });
 
+    // Obtener mensajes del cache
+    const messages = messagesData?.messages || [];
 
     return (
         <main className="flex flex-col h-screen max-h-screen overflow-hidden">
+            {/* Header */}
             <header className="border-b border-zinc-800 p-4 flex items-center justify-between bg-zinc-900/30">
                 <div className="flex items-center gap-4">
                     <div className="flex flex-col">
                         <span className="text-xs text-zinc-500 uppercase">Room ID</span>
                         <div className="flex items-center gap-2">
-                            <span className="font-bold text-green-500 truncate">{roomId.slice(0, 10) + "..."}</span>
+                            <span className="font-bold text-green-500 truncate">
+                                {roomId.slice(0, 10)}...
+                            </span>
                             <button
                                 onClick={copyLink}
                                 className="text-[10px] bg-zinc-800 hover:bg-zinc-700 px-2 py-0.5 rounded text-zinc-400 hover:text-zinc-200 transition-colors"
@@ -78,10 +112,11 @@ export default function ComponentName() {
                     <div className="flex flex-col">
                         <span className="text-xs text-zinc-500 uppercase">Self-Destruct</span>
                         <span
-                            className={`text-sm font-bold flex items-center gap-2 ${timeRemaining !== null && timeRemaining < 60
-                                ? "text-red-500"
-                                : "text-amber-500"
-                                }`}
+                            className={`text-sm font-bold flex items-center gap-2 ${
+                                timeRemaining !== null && timeRemaining < 60
+                                    ? "text-red-500"
+                                    : "text-amber-500"
+                            }`}
                         >
                             {timeRemaining !== null ? timeRemaining : "--:--"}
                         </span>
@@ -89,7 +124,6 @@ export default function ComponentName() {
                 </div>
 
                 <button
-                    // onClick={() => destroyRoom()}
                     className="text-xs bg-zinc-800 hover:bg-red-600 px-3 py-1.5 rounded text-zinc-400 hover:text-white font-bold transition-all group flex items-center gap-2 disabled:opacity-50"
                 >
                     <span className="group-hover:animate-pulse">💣</span>
@@ -97,9 +131,9 @@ export default function ComponentName() {
                 </button>
             </header>
 
-            {/* MESSAGES */}
+            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
-                {messages?.messages.length === 0 && (
+                {messages.length === 0 && (
                     <div className="flex items-center justify-center h-full">
                         <p className="text-zinc-600 text-sm font-mono">
                             No messages yet, start the conversation.
@@ -107,19 +141,28 @@ export default function ComponentName() {
                     </div>
                 )}
 
-                {messages?.messages.map((msg) => (
-                    <div key={msg.id} className="flex flex-col items-start">
+                {messages.map((msg: Message) => (
+                    <div 
+                        key={msg.id} 
+                        className={`flex flex-col items-start ${
+                            msg.id.startsWith('temp-') ? 'opacity-50' : ''
+                        }`}
+                    >
                         <div className="max-w-[80%] group">
                             <div className="flex items-baseline gap-3 mb-1">
                                 <span
-                                    className={`text-xs font-bold ${msg.sender === username ? "text-green-500" : "text-blue-500"
-                                        }`}
+                                    className={`text-xs font-bold ${
+                                        msg.sender === username 
+                                            ? "text-green-500" 
+                                            : "text-blue-500"
+                                    }`}
                                 >
                                     {msg.sender === username ? "YOU" : msg.sender}
+                                    {msg.id.startsWith('temp-') && " (sending...)"}
                                 </span>
 
                                 <span className="text-[10px] text-zinc-600">
-                                    {/* {format(msg.timestamp, "HH:mm")} */}
+                                    {new Date(msg.timestamp).toLocaleTimeString()}
                                 </span>
                             </div>
 
@@ -131,6 +174,7 @@ export default function ComponentName() {
                 ))}
             </div>
 
+            {/* Input */}
             <div className="p-4 border-t border-zinc-800 bg-zinc-900/30">
                 <div className="flex gap-4">
                     <div className="flex-1 relative group">
@@ -138,26 +182,20 @@ export default function ComponentName() {
                             {">"}
                         </span>
                         <input
+                            ref={inputRef}
                             autoFocus
                             type="text"
                             value={input}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && input.trim()) {
-                                    sendMessage({ text: input })
-                                    inputRef.current?.focus()
-                                }
-                            }}
-                            placeholder="Type message..."
+                            onKeyDown={handleKeyDown}
                             onChange={(e) => setInput(e.target.value)}
-                            className="w-full bg-black border border-zinc-800 focus:border-zinc-700 focus:outline-none transition-colors text-zinc-100 placeholder:text-zinc-700 py-3 pl-8 pr-4 text-sm"
+                            placeholder="Type message..."
+                            disabled={mutationName.isPending}
+                            className="w-full bg-black border border-zinc-800 focus:border-zinc-700 focus:outline-none transition-colors text-zinc-100 placeholder:text-zinc-700 py-3 pl-8 pr-4 text-sm disabled:opacity-50"
                         />
                     </div>
 
                     <button
-                        onClick={() => {
-                            sendMessage({ text: input })
-                            inputRef.current?.focus()
-                        }}
+                        onClick={sendMessage}
                         disabled={!input.trim() || mutationName.isPending}
                         className="bg-zinc-800 text-zinc-400 px-6 text-sm font-bold hover:text-zinc-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
@@ -168,4 +206,3 @@ export default function ComponentName() {
         </main>
     );
 }
-
