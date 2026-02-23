@@ -5,10 +5,11 @@ import { useGetMessageDataQuery } from '@/hooks/useGetMessageDataQuery';
 import { useMessageMutation } from '@/hooks/useMessageMutation';
 import { useRealtime } from '@/lib/realtime-client';
 import { useParams, useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Message } from '@/lib/realtime';
 import { useRoomTTL } from '@/hooks/useRoomTTL';
+import { client } from '@/lib/client';
 
 export default function ComponentName() {
     const params = useParams();
@@ -43,10 +44,15 @@ export default function ComponentName() {
         setCopyStatus("COPIED!");
         setTimeout(() => setCopyStatus("COPY"), 2000);
     };
+    useEffect(() => {
+        if (!mutationName.isPending) {
+            inputRef.current?.focus();
+        }
+    }, [mutationName.isPending]);
 
     const sendMessage = () => {
         if (!input.trim()) return;
-        
+
         mutationName.mutate({
             username,
             text: input,
@@ -58,11 +64,10 @@ export default function ComponentName() {
     // Manejador de tecla Enter
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter" && input.trim()) {
+            // e.preventDefault();
             sendMessage();
-            inputRef.current?.focus();
         }
     };
-
     // Realtime updates
     useRealtime({
         channels: [roomId],
@@ -95,6 +100,15 @@ export default function ComponentName() {
             }
         },
     });
+
+    const destroyRoom = async () => {
+        console.log("desde es detroyroom");
+
+        const resp = await client.rooms.delete(null, { query: { roomId } })
+
+        console.log("resp", resp);
+
+    }
 
     // Obtener mensajes del cache
     const messages = messagesData?.messages || [];
@@ -143,6 +157,7 @@ export default function ComponentName() {
 
                 <button
                     className="text-xs bg-zinc-800 hover:bg-red-600 px-3 py-1.5 rounded text-zinc-400 hover:text-white font-bold transition-all group flex items-center gap-2 disabled:opacity-50"
+                    onClick={() => destroyRoom()}
                 >
                     <span className="group-hover:animate-pulse">💣</span>
                     DESTROY NOW
