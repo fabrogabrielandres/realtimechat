@@ -102,12 +102,7 @@ export default function ComponentName() {
     });
 
     const destroyRoom = async () => {
-        console.log("desde es detroyroom");
-
         const resp = await client.rooms.delete(null, { query: { roomId } })
-
-        console.log("resp", resp);
-
     }
 
     // Obtener mensajes del cache

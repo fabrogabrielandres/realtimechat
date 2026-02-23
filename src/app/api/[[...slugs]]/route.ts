@@ -32,7 +32,6 @@ const rooms = new Elysia({ prefix: "/rooms" })
     ).delete(
         "/",
         async ({ auth }) => {
-            console.log("desde es detroyroom en server");
             await realtime.channel(auth.roomId).emit("chat.destroy", { isDestroyed: true })
 
             await Promise.all([
