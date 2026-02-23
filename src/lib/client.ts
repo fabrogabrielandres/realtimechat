@@ -11,7 +11,7 @@ const getBaseUrl = () => {
   }
   // En SSR o server-side
   return process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}`
+    ? "https://realtimechatp2p.vercel.app/"
     : 'http://localhost:3000'
 }
 
