@@ -18,9 +18,9 @@ export const metadata: Metadata = {
     url: 'https://realtimechatp2p.vercel.app',
     images: [
       {
-        url: 'https://realtimechatp2p.vercel.app/favicon.ico', // URL de tu favicon
-        width: 32,  // El favicon suele ser pequeño
-        height: 32,
+        url: 'https://realtimechatp2p.vercel.app/og-image.png',
+        width: 1200,  
+        height: 627,  
         alt: 'Real-Time Chat',
       },
     ],
