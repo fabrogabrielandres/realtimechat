@@ -10,9 +10,22 @@ const jetBrains_Mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "realtimechatp2p",
-};
-
+  title: 'Real-Time Chat App',
+  description: 'Chat application with ElysiaJS and Next.js',
+  openGraph: {
+    title: 'Real-Time Chat with ElysiaJS',
+    description: 'Exploring real-time architectures with WebSockets, Redis, and Bun',
+    url: 'https://realtimechatp2p.vercel.app',
+    images: [
+      {
+        url: 'https://realtimechatp2p.vercel.app/favicon.ico', // URL de tu favicon
+        width: 32,  // El favicon suele ser pequeño
+        height: 32,
+        alt: 'Real-Time Chat',
+      },
+    ],
+  },
+}
 export default function RootLayout({
   children,
 }: Readonly<{
